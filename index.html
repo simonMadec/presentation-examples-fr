@@ -7,7 +7,7 @@
 <style>
 :root {
   --bg:#f4f6f8; --card:#fff; --ink:#1f2328; --muted:#656d76;
-  --line:#d0d7de; --ok:#1a7f37; --warn:#bf4b00; --rej:#57606a;
+  --line:#d0d7de; --ok:#1a7f37; --warn:#bf4b00; --rej:#57606a; --sel:#0969da;
 }
 * { box-sizing:border-box; }
 body { margin:0; font-family:system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--ink); }
@@ -20,20 +20,36 @@ h1 { margin:0 0 4px; font-size:1.25rem; }
 .filters { display:flex; flex-wrap:wrap; gap:10px 14px; align-items:flex-end; }
 .filters .field { display:flex; flex-direction:column; gap:4px; min-width:140px; }
 .filters .field span { font-size:11px; color:var(--muted); font-weight:600; }
-.filters select, .filters button, .filters input {
+.filters select, .filters button, .filters input,
+.selbar button, .selbar select, #export-modal button, #export-modal select {
   font:inherit; font-size:14px; padding:8px 10px; border:1px solid var(--line);
   border-radius:6px; background:#fff; color:var(--ink); min-height:38px;
 }
-.filters button { cursor:pointer; background:#eaeef2; }
+.filters button, .selbar button, #export-modal button { cursor:pointer; background:#eaeef2; }
+#export-modal button.primary, .selbar button.primary { background:#0969da; color:#fff; border-color:#0969da; }
 .filters input { min-width:220px; }
 #count { margin-left:auto; font-size:13px; color:var(--muted); padding-bottom:8px; }
 .pager { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:12px 0 0; }
 .pager span { font-size:13px; color:var(--muted); }
+.selbar {
+  display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:12px 0 0;
+  padding:10px 12px; background:#fff; border:1px solid var(--line); border-radius:8px;
+}
+.selbar .sel-count { font-size:13px; font-weight:600; min-width:9rem; }
+.selbar button.primary { background:#0969da; color:#fff; border-color:#0969da; }
+.selbar button:disabled { opacity:.45; cursor:not-allowed; }
 #err { display:none; margin:12px 18px; padding:12px; background:#fff8c5; border:1px solid #d4a72c; border-radius:8px; }
 #err.show { display:block; }
 main { padding:16px 18px 40px; }
 .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; }
-.card { margin:0; background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.card { margin:0; background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; position:relative; }
+.card.selected { border-color:var(--sel); box-shadow:0 0 0 2px rgba(9,105,218,.25); }
+.card .chk {
+  position:absolute; top:8px; left:8px; z-index:2; background:rgba(255,255,255,.92);
+  border-radius:6px; padding:4px 6px; border:1px solid var(--line); cursor:pointer;
+  display:inline-flex; align-items:center; gap:0;
+}
+.card .chk input { width:16px; height:16px; margin:0; cursor:pointer; }
 .thumb { display:block; width:100%; padding:0; border:0; background:#111; cursor:zoom-in; }
 .thumb img { width:100%; height:170px; object-fit:cover; display:block; background:#ddd; }
 figcaption { padding:10px 12px 12px; font-size:13px; line-height:1.35; }
@@ -53,6 +69,7 @@ figcaption { padding:10px 12px 12px; font-size:13px; line-height:1.35; }
 #lightbox .bar label.toggle { display:inline-flex; align-items:center; gap:6px; user-select:none; }
 #lightbox .bar label.toggle.on { background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.45); }
 #lightbox .bar label.toggle input { margin:0; }
+#lightbox .bar button.on { background:rgba(9,105,218,.55); border-color:rgba(9,105,218,.8); }
 #lightbox .stage-wrap { flex:1; display:flex; min-height:0; min-width:0; }
 #lightbox .stage { flex:1; display:flex; align-items:center; justify-content:center; min-height:0; min-width:0; padding:8px 12px 16px; }
 #lightbox img { max-width:100%; max-height:100%; object-fit:contain; }
@@ -84,12 +101,29 @@ a.thumb { text-decoration:none; }
   grid-column:1 / -1; background:#fff8c5; border:1px solid #d4a72c;
   border-radius:10px; padding:14px 16px; line-height:1.45;
 }
+#export-modal {
+  display:none; position:fixed; inset:0; z-index:120; background:rgba(15,23,42,.45);
+  align-items:center; justify-content:center; padding:18px;
+}
+#export-modal.open { display:flex; }
+#export-modal .panel {
+  width:min(440px, 100%); background:#fff; border-radius:12px; border:1px solid var(--line);
+  padding:18px 18px 16px; box-shadow:0 12px 40px rgba(0,0,0,.18);
+}
+#export-modal h2 { margin:0 0 8px; font-size:1.1rem; }
+#export-modal p { margin:0 0 12px; color:var(--muted); font-size:14px; }
+#export-modal .field { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; }
+#export-modal .field span { font-size:11px; color:var(--muted); font-weight:600; }
+#export-modal .actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; margin-top:8px; }
+#export-modal label.clear-after {
+  display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); margin:4px 0 8px;
+}
 </style>
 </head>
 <body>
 <header>
   <h1>Exemples Gemma RGB — jeu complet FOV90</h1>
-  <p class="sub">7014 / 7014 images · pagination · filtres · clic = zoom · raisonnement & indices · ← → · Échap</p>
+  <p class="sub">7014 / 7014 images · pagination · filtres · coches = sélection GT · clic = zoom · ← → · Échap</p>
   <div class="filters">
     <div class="field"><span>Statut</span>
       <select id="f-status" onchange="applyFilters()"><option value="">Tous</option><option value="correct">Bon résultat</option>
@@ -166,6 +200,15 @@ a.thumb { text-decoration:none; }
     <button type="button" onclick="resetFilters()">Réinitialiser</button>
     <span id="count"></span>
   </div>
+  <div class="selbar" id="selbar">
+    <span class="sel-count" id="sel-count">0 sélectionnée(s)</span>
+    <button type="button" onclick="selectPage(true)">Page : tout cocher</button>
+    <button type="button" onclick="selectPage(false)">Page : décocher</button>
+    <button type="button" onclick="selectFiltered(true)">Filtre : tout cocher</button>
+    <button type="button" onclick="selectFiltered(false)">Filtre : décocher</button>
+    <button type="button" onclick="clearSelection()">Vider la sélection</button>
+    <button type="button" class="primary" id="btn-export" onclick="openExportModal()" disabled>Exporter…</button>
+  </div>
   <div class="pager">
     <button type="button" onclick="prevPage()">Page préc.</button>
     <button type="button" onclick="nextPage()">Page suiv.</button>
@@ -175,66 +218,66 @@ a.thumb { text-decoration:none; }
 <div id="err">Impossible de charger <code>gallery_data.js</code>. Ouvre <code>index.html</code> dans Chrome ou Firefox (fichier local), pas en aperçu Cursor.</div>
 <main>
 <div class="grid" id="grid">
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1132965858822811_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1132965858822811_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1164612985837002_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1164612985837002_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1177082257717910_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1177082257717910_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1181162263973436_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1181162263973436_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1188548869306190_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1188548869306190_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1192099889651946_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1192099889651946_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1360502515581814_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1360502515581814_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1376928037276740_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1376928037276740_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1379395596901613_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1379395596901613_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1385970726533777_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1385970726533777_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1386073759708618_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1386073759708618_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1392610262466692_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1392610262466692_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1404150097941885_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1404150097941885_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1439167794298750_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1439167794298750_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1483066142799174_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1483066142799174_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1485496789222929_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1485496789222929_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1487930295797013_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1487930295797013_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1501213654435961_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1501213654435961_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1513917419845824_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1513917419845824_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1514049363135249_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1514049363135249_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1521149245879499_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1521149245879499_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1522228242440219_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1522228242440219_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1523751342278460_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1523751342278460_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1537303957607358_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1537303957607358_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1540954730483582_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1540954730483582_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1557592758589195_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1557592758589195_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1594786664844889_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1594786664844889_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1724978358460444_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1724978358460444_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1741685370552347_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1741685370552347_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1751776898852998_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1751776898852998_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1825984351435515_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1825984351435515_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1855863731715206_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1855863731715206_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2053837205430099_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2053837205430099_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2080975932733209_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2080975932733209_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2121655455031489_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2121655455031489_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2253233848510502_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2253233848510502_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2261401997676840_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2261401997676840_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2265482840630352_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2265482840630352_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2340387053071162_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2340387053071162_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_25214405761511966_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_25214405761511966_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_3728847730744527_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_3728847730744527_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_4166585003581517_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_4166585003581517_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_4245926342347087_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_4245926342347087_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_4249491488595620_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_4249491488595620_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_4338974299660703_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_4338974299660703_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_702346336271350_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_702346336271350_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_706953819133187_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_706953819133187_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_723800837428716_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_723800837428716_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_862549196242037_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_862549196242037_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_863489949372546_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_863489949372546_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_868657338850156_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_868657338850156_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_873070825242777_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_873070825242777_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_876531554726373_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_876531554726373_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_895415759575061_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_895415759575061_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_923149377546900_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_923149377546900_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Bati/con_z95_conf1.00_1369815184545169_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Bati/con_z95_conf1.00_1369815184545169_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Bâti</b></div><div class="meta">conf 1.00 · t* 0.95 · conf ≥ 0.95</div><div class="meta">gardé · conf ≫ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Bati/con_z95_conf1.00_856673810163966_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Bati/con_z95_conf1.00_856673810163966_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Bâti</b></div><div class="meta">conf 1.00 · t* 0.95 · conf ≥ 0.95</div><div class="meta">gardé · conf ≫ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Foret/con_z80_conf0.85_1081948463910393_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Foret/con_z80_conf0.85_1081948463910393_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Forêt</b></div><div class="meta">conf 0.85 · t* 0.85 · 0.80 ≤ conf &lt; 0.90</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Foret/con_z80_conf0.85_1132965858822811_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Foret/con_z80_conf0.85_1132965858822811_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Forêt</b></div><div class="meta">conf 0.85 · t* 0.85 · 0.80 ≤ conf &lt; 0.90</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
-<figure class="card"><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Foret/con_z80_conf0.85_1164603988614114_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Foret/con_z80_conf0.85_1164603988614114_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Forêt</b></div><div class="meta">conf 0.85 · t* 0.85 · 0.80 ≤ conf &lt; 0.90</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1132965858822811_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1132965858822811_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1132965858822811_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1164612985837002_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1164612985837002_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1164612985837002_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1177082257717910_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1177082257717910_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1177082257717910_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1181162263973436_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1181162263973436_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1181162263973436_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1188548869306190_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1188548869306190_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1188548869306190_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1192099889651946_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1192099889651946_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1192099889651946_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1360502515581814_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1360502515581814_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1360502515581814_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1376928037276740_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1376928037276740_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1376928037276740_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1379395596901613_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1379395596901613_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1379395596901613_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1385970726533777_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1385970726533777_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1385970726533777_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1386073759708618_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1386073759708618_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1386073759708618_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1392610262466692_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1392610262466692_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1392610262466692_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1404150097941885_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1404150097941885_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1404150097941885_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1439167794298750_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1439167794298750_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1439167794298750_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1483066142799174_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1483066142799174_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1483066142799174_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1485496789222929_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1485496789222929_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1485496789222929_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1487930295797013_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1487930295797013_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1487930295797013_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1501213654435961_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1501213654435961_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1501213654435961_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1513917419845824_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1513917419845824_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1513917419845824_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1514049363135249_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1514049363135249_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1514049363135249_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1521149245879499_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1521149245879499_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1521149245879499_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1522228242440219_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1522228242440219_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1522228242440219_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1523751342278460_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1523751342278460_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1523751342278460_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1537303957607358_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1537303957607358_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1537303957607358_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1540954730483582_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1540954730483582_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1540954730483582_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1557592758589195_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1557592758589195_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1557592758589195_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1594786664844889_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1594786664844889_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1594786664844889_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1724978358460444_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1724978358460444_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1724978358460444_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1741685370552347_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1741685370552347_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1741685370552347_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1751776898852998_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1751776898852998_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1751776898852998_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1825984351435515_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1825984351435515_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1825984351435515_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1855863731715206_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1855863731715206_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_1855863731715206_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="2053837205430099_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2053837205430099_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2053837205430099_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="2080975932733209_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2080975932733209_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2080975932733209_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="2121655455031489_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2121655455031489_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2121655455031489_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="2253233848510502_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2253233848510502_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2253233848510502_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="2261401997676840_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2261401997676840_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2261401997676840_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="2265482840630352_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2265482840630352_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2265482840630352_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="2340387053071162_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2340387053071162_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_2340387053071162_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="25214405761511966_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_25214405761511966_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_25214405761511966_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="3728847730744527_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_3728847730744527_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_3728847730744527_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="4166585003581517_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_4166585003581517_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_4166585003581517_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="4245926342347087_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_4245926342347087_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_4245926342347087_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="4249491488595620_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_4249491488595620_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_4249491488595620_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="4338974299660703_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_4338974299660703_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_4338974299660703_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="702346336271350_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_702346336271350_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_702346336271350_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="706953819133187_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_706953819133187_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_706953819133187_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="723800837428716_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_723800837428716_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_723800837428716_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="862549196242037_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_862549196242037_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_862549196242037_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="863489949372546_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_863489949372546_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_863489949372546_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="868657338850156_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_868657338850156_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_868657338850156_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="873070825242777_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_873070825242777_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_873070825242777_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="876531554726373_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_876531554726373_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_876531554726373_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="895415759575061_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_895415759575061_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_895415759575061_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="923149377546900_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_923149377546900_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Autres_vergers/con_z70_conf0.70_923149377546900_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Autres vergers</b></div><div class="meta">conf 0.70 · t* 0.70 · 0.70 ≤ conf &lt; 0.80</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1369815184545169_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Bati/con_z95_conf1.00_1369815184545169_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Bati/con_z95_conf1.00_1369815184545169_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Bâti</b></div><div class="meta">conf 1.00 · t* 0.95 · conf ≥ 0.95</div><div class="meta">gardé · conf ≫ t*</div></figcaption></figure>
+<figure class="card" data-name="856673810163966_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Bati/con_z95_conf1.00_856673810163966_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Bati/con_z95_conf1.00_856673810163966_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Bâti</b></div><div class="meta">conf 1.00 · t* 0.95 · conf ≥ 0.95</div><div class="meta">gardé · conf ≫ t*</div></figcaption></figure>
+<figure class="card" data-name="1081948463910393_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Foret/con_z80_conf0.85_1081948463910393_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Foret/con_z80_conf0.85_1081948463910393_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Forêt</b></div><div class="meta">conf 0.85 · t* 0.85 · 0.80 ≤ conf &lt; 0.90</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1132965858822811_left.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Foret/con_z80_conf0.85_1132965858822811_left.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Foret/con_z80_conf0.85_1132965858822811_left.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Forêt</b></div><div class="meta">conf 0.85 · t* 0.85 · 0.80 ≤ conf &lt; 0.90</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
+<figure class="card" data-name="1164603988614114_right.jpg"><label class="chk" title="Sélectionner"><input type="checkbox" disabled/></label><a class="thumb" href="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Foret/con_z80_conf0.85_1164603988614114_right.jpg"><img src="https://pub-b3a5eea711eb43c4b2b229ab62197f22.r2.dev/02_confusions/Anacardier__vu_comme__Foret/con_z80_conf0.85_1164603988614114_right.jpg" loading="lazy" alt=""/></a><figcaption><span class="badge confusion">Confusion</span><div>Will: <b>Anacardier</b></div><div>Gemma: <b>Forêt</b></div><div class="meta">conf 0.85 · t* 0.85 · 0.80 ≤ conf &lt; 0.90</div><div class="meta">gardé · conf juste ≥ t*</div></figcaption></figure>
 </div>
 </main>
 
@@ -243,6 +286,7 @@ a.thumb { text-decoration:none; }
     <button type="button" onclick="prevLb()">←</button>
     <button type="button" onclick="nextLb()">→</button>
     <div class="grow" id="lb-info"></div>
+    <button type="button" id="lb-sel" onclick="toggleLbSelection()">+ sélection</button>
     <label class="toggle" id="lb-toggle" title="Afficher le raisonnement Gemma et les indices visuels">
       <input type="checkbox" id="lb-show-explain" onchange="toggleExplain()"/> Raisonnement
     </label>
@@ -254,6 +298,46 @@ a.thumb { text-decoration:none; }
   </div>
 </div>
 
+<div id="export-modal" onclick="if(event.target===this)closeExportModal()">
+  <div class="panel" role="dialog" aria-labelledby="export-title">
+    <h2 id="export-title">Exporter les corrections GT</h2>
+    <p id="export-summary">0 image(s) sélectionnée(s).</p>
+    <div class="field">
+      <span>Nouvelle classe</span>
+      <select id="export-target"><option value="">— choisir —</option><option value="Cashew">Anacardier</option>
+<option value="Groundnut">Arachide</option>
+<option value="Other annual herbaceous crop">Autres annuelles</option>
+<option value="Other orchard">Autres vergers</option>
+<option value="Built-up">Bâti</option>
+<option value="Cotton">Coton</option>
+<option value="Water">Eau</option>
+<option value="Forest">Forêt</option>
+<option value="Gmelina arborea">Gmelina</option>
+<option value="Yam">Igname</option>
+<option value="Mango">Manguier</option>
+<option value="Cassava">Manioc</option>
+<option value="Maize">Maïs</option>
+<option value="Cowpea">Niébé</option>
+<option value="Rice">Riz</option>
+<option value="Herbaceous savanna">Savane herbacée</option>
+<option value="Soybean">Soja</option>
+<option value="Bare road">Sol nu / Route</option>
+<option value="Sorghum/Millet">Sorgho / Mil</option>
+<option value="Teak">Teck</option>
+<option value="Shrubby vegetation">Vég. arbustive</option>
+<option value="__CLEAR__">Vider le label</option>
+<option value="Unclassifiable">Inclassifiable</option></select>
+    </div>
+    <label class="clear-after"><input type="checkbox" id="export-clear-sel" checked/> Vider la sélection après export</label>
+    <div class="actions">
+      <button type="button" onclick="closeExportModal()">Annuler</button>
+      <button type="button" class="primary" onclick="doExport('csv')">Télécharger CSV</button>
+      <button type="button" class="primary" onclick="doExport('json')">Télécharger JSON</button>
+      <button type="button" class="primary" onclick="doExport('both')">CSV + JSON</button>
+    </div>
+  </div>
+</div>
+
 <script src="gallery_data.js"></script>
 <script>
 var DATA = [];
@@ -262,11 +346,44 @@ var lbIdx = -1;
 var page = 0;
 var PAGE = 60;
 var showExplain = false;
+var selectedNames = {};
 try { showExplain = localStorage.getItem('gallery_show_explain') === '1'; } catch (e) {}
+try {
+  var rawSel = localStorage.getItem('gallery_gt_selection');
+  if (rawSel) {
+    var arr = JSON.parse(rawSel);
+    if (Array.isArray(arr)) for (var si = 0; si < arr.length; si++) selectedNames[arr[si]] = true;
+  }
+} catch (e) {}
 
 function el(id) { return document.getElementById(id); }
 function nPages() { return Math.max(1, Math.ceil(filtered.length / PAGE)); }
 function srcUrl(src) { return encodeURI(src); }
+function selectedCount() { return Object.keys(selectedNames).length; }
+
+function persistSelection() {
+  try { localStorage.setItem('gallery_gt_selection', JSON.stringify(Object.keys(selectedNames))); } catch (e) {}
+  updateSelBar();
+}
+
+function updateSelBar() {
+  var n = selectedCount();
+  el('sel-count').textContent = n + ' sélectionnée(s)';
+  el('btn-export').disabled = n === 0;
+}
+
+function isSelected(name) { return !!selectedNames[name]; }
+
+function setSelected(name, on) {
+  if (!name) return;
+  if (on) selectedNames[name] = true;
+  else delete selectedNames[name];
+  persistSelection();
+}
+
+function toggleSelected(name) {
+  setSelected(name, !isSelected(name));
+}
 
 function currentFilters() {
   return {
@@ -320,6 +437,47 @@ function nextPage() {
   renderGrid();
 }
 
+function pageItems() {
+  var start = pageStart();
+  return filtered.slice(start, start + PAGE);
+}
+
+function selectPage(on) {
+  var show = pageItems();
+  for (var i = 0; i < show.length; i++) {
+    if (on) selectedNames[show[i].name] = true;
+    else delete selectedNames[show[i].name];
+  }
+  persistSelection();
+  renderGrid();
+  syncLbSelBtn();
+}
+
+function selectFiltered(on) {
+  for (var i = 0; i < filtered.length; i++) {
+    if (on) selectedNames[filtered[i].name] = true;
+    else delete selectedNames[filtered[i].name];
+  }
+  persistSelection();
+  renderGrid();
+  syncLbSelBtn();
+}
+
+function clearSelection() {
+  selectedNames = {};
+  persistSelection();
+  renderGrid();
+  syncLbSelBtn();
+}
+
+function onCardCheck(ev, name) {
+  ev.stopPropagation();
+  setSelected(name, !!ev.target.checked);
+  var card = ev.target.closest('.card');
+  if (card) card.classList.toggle('selected', !!ev.target.checked);
+  syncLbSelBtn();
+}
+
 function renderGrid() {
   if (page >= nPages()) page = nPages() - 1;
   if (page < 0) page = 0;
@@ -329,7 +487,10 @@ function renderGrid() {
   for (var i = 0; i < show.length; i++) {
     var it = show[i];
     var gi = start + i;
-    html += '<figure class="card">'
+    var on = isSelected(it.name);
+    html += '<figure class="card'+(on?' selected':'')+'" data-name="'+escAttr(it.name)+'">'
+      + '<label class="chk" title="Sélectionner" onclick="event.stopPropagation()">'
+      + '<input type="checkbox"'+(on?' checked':'')+' onchange="onCardCheck(event, \''+escJs(it.name)+'\')"/></label>'
       + '<button type="button" class="thumb" onclick="openLb('+gi+')">'
       + '<img src="'+srcUrl(it.src)+'" loading="lazy" alt=""/></button>'
       + '<figcaption><span class="badge '+it.status+'">'+esc(it.status_fr)+'</span>'
@@ -344,10 +505,22 @@ function renderGrid() {
   var b = Math.min(start + show.length, filtered.length);
   el('pageinfo').textContent = 'page ' + (page + 1) + ' / ' + nPages()
     + ' · images ' + a + '–' + b;
+  updateSelBar();
 }
 
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escAttr(s) {
+  return esc(s).replace(/"/g,'&quot;');
+}
+function escJs(s) {
+  return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+}
+function csvEscape(s) {
+  var t = String(s == null ? '' : s);
+  if (/[",\n\r]/.test(t)) return '"' + t.replace(/"/g,'""') + '"';
+  return t;
 }
 
 function renderExplain(it) {
@@ -379,10 +552,25 @@ function syncExplainUi() {
   if (box) box.classList.toggle('show-explain', showExplain);
 }
 
+function syncLbSelBtn() {
+  var btn = el('lb-sel');
+  if (!btn || lbIdx < 0 || !filtered[lbIdx]) return;
+  var on = isSelected(filtered[lbIdx].name);
+  btn.textContent = on ? '− sélection' : '+ sélection';
+  btn.classList.toggle('on', on);
+}
+
 function toggleExplain() {
   showExplain = !!el('lb-show-explain').checked;
   syncExplainUi();
   try { localStorage.setItem('gallery_show_explain', showExplain ? '1' : '0'); } catch (e) {}
+}
+
+function toggleLbSelection() {
+  if (lbIdx < 0 || !filtered[lbIdx]) return;
+  toggleSelected(filtered[lbIdx].name);
+  syncLbSelBtn();
+  renderGrid();
 }
 
 function openLb(i) {
@@ -395,6 +583,7 @@ function openLb(i) {
     + ' · ' + (it.name || '') + ' · ' + (lbIdx+1) + '/' + filtered.length;
   renderExplain(it);
   syncExplainUi();
+  syncLbSelBtn();
   el('lightbox').classList.add('open');
 }
 function closeLb() {
@@ -406,11 +595,113 @@ function closeLb() {
 function prevLb() { if (lbIdx < 0) return; openLb(lbIdx - 1); }
 function nextLb() { if (lbIdx < 0) return; openLb(lbIdx + 1); }
 
+function openExportModal() {
+  if (!selectedCount()) return;
+  el('export-summary').textContent = selectedCount() + ' image(s) sélectionnée(s).';
+  el('export-modal').classList.add('open');
+}
+function closeExportModal() {
+  el('export-modal').classList.remove('open');
+}
+
+function resolveTarget() {
+  var sel = el('export-target');
+  var val = sel.value;
+  if (!val) return null;
+  var lab = sel.options[sel.selectedIndex].textContent;
+  if (val === '__CLEAR__') return { new_gt: '', new_gt_fr: '' };
+  return { new_gt: val, new_gt_fr: lab };
+}
+
+function byNameIndex() {
+  var map = {};
+  for (var i = 0; i < DATA.length; i++) map[DATA[i].name] = DATA[i];
+  return map;
+}
+
+function buildExportRows(target) {
+  var map = byNameIndex();
+  var names = Object.keys(selectedNames).sort();
+  var rows = [];
+  for (var i = 0; i < names.length; i++) {
+    var it = map[names[i]];
+    if (!it) continue;
+    rows.push({
+      name: it.name,
+      old_gt: it.gt || '',
+      old_gt_fr: it.gt_fr || '',
+      new_gt: target.new_gt,
+      new_gt_fr: target.new_gt_fr,
+      pred: it.pred || '',
+      pred_fr: it.pred_fr || '',
+      status: it.status || '',
+      conf: it.conf
+    });
+  }
+  return rows;
+}
+
+function downloadBlob(filename, text, mime) {
+  var blob = new Blob([text], { type: mime || 'text/plain;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+}
+
+function rowsToCsv(rows) {
+  var cols = ['name','old_gt','old_gt_fr','new_gt','new_gt_fr','pred','pred_fr','status','conf'];
+  var lines = [cols.join(',')];
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    lines.push(cols.map(function(c) { return csvEscape(r[c]); }).join(','));
+  }
+  return lines.join('\n') + '\n';
+}
+
+function doExport(kind) {
+  var target = resolveTarget();
+  if (!target) {
+    alert('Choisis une nouvelle classe (ou « Vider le label » / Inclassifiable).');
+    return;
+  }
+  var rows = buildExportRows(target);
+  if (!rows.length) {
+    alert('Aucune image sélectionnée.');
+    return;
+  }
+  var stamp = new Date().toISOString().replace(/[:.]/g,'-');
+  var base = 'gt_corrections_' + stamp;
+  if (kind === 'csv' || kind === 'both') {
+    downloadBlob(base + '.csv', rowsToCsv(rows), 'text/csv;charset=utf-8');
+  }
+  if (kind === 'json' || kind === 'both') {
+    var payload = {
+      exported_at: new Date().toISOString(),
+      target: target,
+      n: rows.length,
+      corrections: rows
+    };
+    downloadBlob(base + '.json', JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
+  }
+  if (el('export-clear-sel').checked) clearSelection();
+  closeExportModal();
+}
+
 document.addEventListener('keydown', function(e) {
+  if (el('export-modal').classList.contains('open')) {
+    if (e.key === 'Escape') closeExportModal();
+    return;
+  }
   if (el('lightbox').classList.contains('open')) {
     if (e.key === 'Escape') closeLb();
     if (e.key === 'ArrowLeft') prevLb();
     if (e.key === 'ArrowRight') nextLb();
+    if (e.key === 's' || e.key === 'S') { toggleLbSelection(); e.preventDefault(); }
     return;
   }
   if (e.key === 'ArrowLeft') prevPage();
@@ -423,6 +714,11 @@ function start(data) {
     el('err').classList.add('show');
     return;
   }
+  // Drop stale selection names no longer in DATA
+  var known = {};
+  for (var i = 0; i < DATA.length; i++) known[DATA[i].name] = true;
+  Object.keys(selectedNames).forEach(function(n) { if (!known[n]) delete selectedNames[n]; });
+  persistSelection();
   applyFilters();
 }
 
