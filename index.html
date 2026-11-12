@@ -142,7 +142,7 @@ a.thumb { text-decoration:none; }
       <select id="f-status" onchange="applyFilters()"><option value="">Tous</option><option value="correct">Bon résultat</option>
 <option value="confusion">Confusion</option>
 <option value="reject_low_conf">Rejet (sous t*)</option>
-<option value="reject_uncl">Inclassifiable</option></select>
+<option value="reject_uncl">Rejeté</option></select>
     </div>
     <div class="field"><span>Label Will (GT)</span>
       <select id="f-gt" onchange="applyFilters()"><option value="">Tous</option><option value="Cashew">Anacardier</option>
@@ -175,17 +175,14 @@ a.thumb { text-decoration:none; }
 <option value="Built-up">Bâti</option>
 <option value="Cotton">Coton</option>
 <option value="Forest">Forêt</option>
-<option value="Gmelina arborea">Gmelina</option>
-<option value="Yam">Igname</option>
-<option value="Unclassifiable">Inclassifiable</option>
 <option value="Mango">Manguier</option>
 <option value="Cassava">Manioc</option>
 <option value="Maize">Maïs</option>
 <option value="Cowpea">Niébé</option>
+<option value="Rejected">Rejeté</option>
 <option value="Herbaceous savanna">Savane herbacée</option>
 <option value="Bare road">Sol nu / Route</option>
 <option value="Sorghum/Millet">Sorgho / Mil</option>
-<option value="Teak">Teck</option>
 <option value="Shrubby vegetation">Vég. arbustive</option></select>
     </div>
     <div class="field"><span>Zone de confiance</span>
@@ -196,7 +193,7 @@ a.thumb { text-decoration:none; }
 <option value="z60">0.60 ≤ conf &lt; 0.70</option>
 <option value="z50">0.50 ≤ conf &lt; 0.60</option>
 <option value="below50">conf &lt; 0.50</option>
-<option value="uncl">Inclassifiable</option></select>
+<option value="uncl">Rejeté</option></select>
     </div>
     <div class="field"><span>Position vs t*</span>
       <select id="f-rzone" onchange="applyFilters()"><option value="">Toutes</option><option value="kept_high">gardé · conf ≫ t*</option>
@@ -204,7 +201,7 @@ a.thumb { text-decoration:none; }
 <option value="reject_near">rejet · juste sous t*</option>
 <option value="reject_mid">rejet · conf moyenne</option>
 <option value="reject_far">rejet · conf basse</option>
-<option value="uncl">Inclassifiable</option></select>
+<option value="uncl">Rejeté</option></select>
     </div>
     <div class="field"><span>Recherche</span>
       <input id="f-q" type="search" placeholder="fichier, classe…" oninput="applyFilters()"/>
@@ -324,6 +321,13 @@ try {
 function el(id) { return document.getElementById(id); }
 function nPages() { return Math.max(1, Math.ceil(filtered.length / PAGE)); }
 function srcUrl(src) { return encodeURI(src); }
+
+function cardDetail(it) {
+  if (it.reject_reason) return String(it.reject_reason);
+  if ((it.status === 'reject_low_conf' || it.status === 'reject_uncl') && it.raw_pred_fr)
+    return 'était ' + String(it.raw_pred_fr);
+  return String(it.rzone_fr || '');
+}
 function selectedCount() { return Object.keys(selectedNames).length; }
 
 function persistSelection() {
@@ -371,7 +375,8 @@ function applyFilters() {
     if (f.czone && it.czone !== f.czone) return false;
     if (f.rzone && it.rzone !== f.rzone) return false;
     if (f.q) {
-      var blob = ((it.name || '') + ' ' + it.gt_fr + ' ' + it.pred_fr + ' ' + it.src).toLowerCase();
+      var blob = ((it.name || '') + ' ' + it.gt_fr + ' ' + it.pred_fr + ' '
+        + (it.raw_pred_fr || '') + ' ' + (it.reject_reason || '') + ' ' + it.src).toLowerCase();
       if (blob.indexOf(f.q) < 0) return false;
     }
     return true;
@@ -462,7 +467,7 @@ function renderGrid() {
       + '<div>Will: <b>'+esc(it.gt_fr)+'</b></div>'
       + '<div>Gemma: <b>'+esc(it.pred_fr)+'</b></div>'
       + '<div class="meta">conf '+Number(it.conf).toFixed(2)+' · t* '+Number(it.t).toFixed(2)+' · '+esc(it.czone_fr)+'</div>'
-      + '<div class="meta">'+esc(it.rzone_fr)+'</div></figcaption></figure>';
+      + '<div class="meta">'+esc(cardDetail(it))+'</div></figcaption></figure>';
   }
   el('grid').innerHTML = html;
   el('count').textContent = filtered.length + ' / ' + DATA.length + ' images';
